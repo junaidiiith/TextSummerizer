@@ -29,11 +29,19 @@ def preprocess_sentence(sentence):
     return [(stemmer.stem(word),ptag) for word,ptag in taggedWords if word.lower() not in stopwords]
     
 
-def preprocess_para(data):
+def preprocess_paragraphs(paragraphs):
     tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-    sentences = tokenizer.tokenize(data)
-    return [(preprocess_sentence(sentence),
-             sentences.index(sentence)) for sentence in sentences]
+    inverse_sentence_structure = dict()
+    sentence_number = 0
+    processed_paras = list()
+    for paragraph in paragraphs:
+	    sentences = tokenizer.tokenize(paragraph)
+	    sentence_list = list()
+	    for sentence in sentences:
+	    	inverse_sentence_structure[sentence_number] = sentence
+	    	sentence_list.append((preprocess_sentence(sentence)),sentences.index(sentence))
+	    processed_paras.append(sentence_list)
+	return processed_paras,inverse_sentence_structure
 
 def joinlist(l):
     wordlist = list()
@@ -164,17 +172,27 @@ def feature_extraction(paragraphs):
 	sentences_feature_matrix = None
 	return pd.DataFrame(np.array(sentences_feature_matrix_),columns=features)
 
+def create_yes_no_column(inverse_sentence_structure, outputfile):
+	output = open(outputfile).read()
+	present = [0]*len(inverse_sentence_structure)
+    for index,sentence in inverse_sentence_structure.items():
+    	present[index] = sentence in output
+    return present
 
 def train_and_plot_results(data):
     pass     
 
-def summerize(file):
+def preprocess_file(file):
 	text = open(file).read().split('\n\n')
 	paras = [para.replace('\n',' ') for para in text]
-	paras = [(preprocess_para(para),paras.index(para)) for para in paras 
-	         if len(para) > 0]
-    
-	data = feature_extraction(paras)
+	return paras
+
+def summerize(file):
+	paragraphs = preprocess_file(file)
+	paragraphs,inverse_sentence_structure = preprocess_paragraphs(paragraphs)
+	data = feature_extraction(paragraphs)
+	present = create_yes_no_column(inverse_sentence_structure, outputfile)
+	data['present'] = present
 	print(data.head())
 	print(data.columns)
 	train_and_plot_results(data)
@@ -193,4 +211,3 @@ summerize('article8')
 
 # if __name__ == '__main__':
 # 	main()
-    
